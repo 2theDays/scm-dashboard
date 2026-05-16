@@ -20,6 +20,26 @@ st.title("📈 SCM 시계열 분석 대시보드")
 st.caption("지수평활법(SES / Holt) 기반 주가 예측")
 
 # ============================================
+# 커스텀 CSS
+# ============================================
+st.markdown("""
+<style>
+/* 셀렉트박스 전체 영역 - 포인터 커서 */
+div[data-baseweb="select"] > div {
+    cursor: pointer !important;
+}
+/* 드롭다운 화살표 아이콘 */
+div[data-baseweb="select"] svg {
+    cursor: pointer !important;
+}
+/* 드롭다운 열렸을 때 옵션 목록 */
+div[data-baseweb="popover"] li {
+    cursor: pointer !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================
 # 인기 종목 목록
 # ============================================
 POPULAR_STOCKS = {
