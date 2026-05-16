@@ -34,9 +34,9 @@ st.markdown("""
 # ============================================
 st.markdown("""
 <style>
-/* 셀렉트박스 좌측(값 표시) 영역 - 기본 커서 유지 */
+/* 셀렉트박스 좌측(값 표시) 영역 - 텍스트 입력 커서(I빔) */
 div[data-baseweb="select"] > div > div:first-child {
-    cursor: default !important;
+    cursor: text !important;
 }
 /* 드롭다운 화살표(꺽쇠) 영역만 포인터 커서 */
 div[data-baseweb="select"] > div > div:last-child {
