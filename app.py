@@ -17,18 +17,31 @@ st.set_page_config(
 )
 
 st.title("📈 SCM 시계열 분석 대시보드")
-st.caption("지수평활법(SES / Holt) 기반 주가 예측")
+st.markdown("""
+<p style="
+    font-size: 17px;
+    font-weight: 600;
+    color: #4FC3F7;
+    letter-spacing: 0.04em;
+    margin-top: -12px;
+    margin-bottom: 16px;
+    font-style: italic;
+">📊 지수평활법(SES / Holt) 기반 주가 예측</p>
+""", unsafe_allow_html=True)
 
 # ============================================
 # 커스텀 CSS
 # ============================================
 st.markdown("""
 <style>
-/* 셀렉트박스 전체 영역 - 포인터 커서 */
-div[data-baseweb="select"] > div {
+/* 셀렉트박스 좌측(값 표시) 영역 - 기본 커서 유지 */
+div[data-baseweb="select"] > div > div:first-child {
+    cursor: default !important;
+}
+/* 드롭다운 화살표(꺽쇠) 영역만 포인터 커서 */
+div[data-baseweb="select"] > div > div:last-child {
     cursor: pointer !important;
 }
-/* 드롭다운 화살표 아이콘 */
 div[data-baseweb="select"] svg {
     cursor: pointer !important;
 }
