@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from datetime import datetime, date
+from datetime import date
 from statsmodels.tsa.api import ExponentialSmoothing
 from sklearn.metrics import mean_squared_error
 
@@ -20,31 +20,24 @@ st.title("📈 SCM 시계열 분석 대시보드")
 st.caption("지수평활법(SES / Holt) 기반 주가 예측")
 
 # ============================================
-# 사이드바: 파라미터 설정
+# 인기 종목 목록
 # ============================================
-with st.sidebar:
-    st.header("⚙️ 설정")
-
-    company = st.text_input("종목 코드", value="CPNG", help="예: CPNG, AAPL, TSLA")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        start_date = st.date_input("시작일", value=date(2020, 1, 1))
-    with col2:
-        end_date = st.date_input("종료일", value=date.today())
-
-    st.divider()
-
-    test_size = st.slider("테스트 기간 (일)", min_value=10, max_value=90, value=30, step=5)
-
-    st.divider()
-
-    st.subheader("SES 설정")
-    alpha_manual = st.slider("α 값 (수동 SES)", min_value=0.01, max_value=0.99, value=0.2, step=0.01)
-
-    st.divider()
-
-    run_button = st.button("🚀 분석 실행", use_container_width=True, type="primary")
+POPULAR_STOCKS = {
+    "🔍 직접 입력": "CUSTOM",
+    "쿠팡 (CPNG)": "CPNG",
+    "애플 (AAPL)": "AAPL",
+    "테슬라 (TSLA)": "TSLA",
+    "엔비디아 (NVDA)": "NVDA",
+    "마이크로소프트 (MSFT)": "MSFT",
+    "구글 (GOOGL)": "GOOGL",
+    "아마존 (AMZN)": "AMZN",
+    "메타 (META)": "META",
+    "삼성전자 (005930.KS)": "005930.KS",
+    "SK하이닉스 (000660.KS)": "000660.KS",
+    "카카오 (035720.KS)": "035720.KS",
+    "네이버 (035420.KS)": "035420.KS",
+    "현대차 (005380.KS)": "005380.KS",
+}
 
 # ============================================
 # RMSE 함수
@@ -55,51 +48,94 @@ def calculate_rmse(actual, predicted):
     return np.sqrt(mean_squared_error(actual, predicted))
 
 # ============================================
-# 데이터 로딩 (캐싱)
+# 데이터 로딩 (캐싱 - 종목/날짜 바뀔 때만 재다운로드)
 # ============================================
 @st.cache_data(show_spinner=False)
 def load_data(ticker, start, end):
     df_stock = yf.download(ticker, start=str(start), end=str(end), progress=False)
+    if df_stock.empty:
+        return pd.DataFrame()
     df = df_stock[["Close"]].copy()
     df = df.dropna()
     df.columns = ["Close"]
     return df
 
-# ============================================
-# 메인 로직
-# ============================================
-if run_button or "df" not in st.session_state:
-    with st.spinner(f"{company} 데이터 불러오는 중..."):
-        try:
-            df = load_data(company, start_date, end_date)
-            if df.empty or len(df) < test_size + 30:
-                st.error("데이터가 부족합니다. 종목 코드 또는 기간을 확인해주세요.")
-                st.stop()
-            st.session_state["df"] = df
-            st.session_state["company"] = company
-            st.session_state["test_size"] = test_size
-            st.session_state["alpha_manual"] = alpha_manual
-        except Exception as e:
-            st.error(f"데이터 로딩 오류: {e}")
-            st.stop()
+@st.cache_data(show_spinner=False)
+def get_company_name(ticker):
+    try:
+        info = yf.Ticker(ticker).info
+        return info.get("longName") or info.get("shortName") or ticker
+    except:
+        return ticker
 
-if "df" not in st.session_state:
-    st.info("왼쪽 사이드바에서 설정 후 '분석 실행' 버튼을 눌러주세요.")
+# ============================================
+# 사이드바: 파라미터 설정
+# ============================================
+with st.sidebar:
+    st.header("⚙️ 설정")
+
+    # 종목 검색
+    st.subheader("🔎 종목 검색")
+    selected_label = st.selectbox(
+        "인기 종목 선택",
+        options=list(POPULAR_STOCKS.keys()),
+        index=1,
+    )
+
+    if POPULAR_STOCKS[selected_label] == "CUSTOM":
+        company = st.text_input(
+            "종목 코드 직접 입력",
+            value="CPNG",
+            placeholder="예: AAPL, 005930.KS, TSLA",
+            help="야후 파이낸스 기준 티커 코드를 입력하세요"
+        )
+    else:
+        company = POPULAR_STOCKS[selected_label]
+        st.caption(f"📌 티커 코드: `{company}`")
+
+    st.divider()
+
+    # 날짜 설정
+    col1, col2 = st.columns(2)
+    with col1:
+        start_date = st.date_input("시작일", value=date(2020, 1, 1))
+    with col2:
+        end_date = st.date_input("종료일", value=date.today())
+
+    st.divider()
+
+    # 테스트 기간
+    test_size = st.slider("테스트 기간 (일)", min_value=10, max_value=90, value=30, step=5)
+
+    st.divider()
+
+    # SES 설정
+    st.subheader("SES 설정")
+    alpha_manual = st.slider("α 값 (수동 SES)", min_value=0.01, max_value=0.99, value=0.2, step=0.01)
+
+# ============================================
+# 데이터 로딩
+# ============================================
+company = company.strip().upper() if company else "CPNG"
+
+with st.spinner(f"📡 {company} 데이터 불러오는 중..."):
+    df = load_data(company, start_date, end_date)
+
+if df.empty:
+    st.error(f"❌ '{company}' 데이터를 찾을 수 없습니다. 종목 코드를 확인해주세요.")
     st.stop()
 
-df = st.session_state["df"]
-test_size = st.session_state["test_size"]
-alpha_manual = st.session_state["alpha_manual"]
-company = st.session_state["company"]
-
-train = df.iloc[:-test_size].copy()
-test = df.iloc[-test_size:].copy()
+if len(df) < test_size + 30:
+    st.error(f"❌ 데이터가 부족합니다. 현재 {len(df)}일치 데이터 (최소 {test_size + 30}일 필요). 기간을 늘려주세요.")
+    st.stop()
 
 # ============================================
 # 모델 학습
 # ============================================
-with st.spinner("모델 학습 중..."):
+train = df.iloc[:-test_size].copy()
+test = df.iloc[-test_size:].copy()
 
+with st.spinner("🧠 모델 학습 중..."):
     # SES 수동 α
     ses_model = ExponentialSmoothing(
         train["Close"], trend=None, seasonal=None, initialization_method="estimated"
@@ -131,13 +167,11 @@ with st.spinner("모델 학습 중..."):
     alpha_holt = holt_model.params["smoothing_level"]
     beta_holt = holt_model.params["smoothing_trend"]
 
-    # 이동평균
+    # 이동평균 & 차분
     train["MA_20"] = train["Close"].rolling(window=20).mean()
-
-    # 차분
     df["Diff"] = df["Close"].diff()
 
-    # RMSE 계산
+    # RMSE
     rmse_ses = calculate_rmse(test["Close"], test["SES"])
     rmse_ses_08 = calculate_rmse(test["Close"], test["SES_08"])
     rmse_ses_auto = calculate_rmse(test["Close"], test["SES_AUTO"])
@@ -252,8 +286,8 @@ with tab3:
                            legend=dict(orientation="h", yanchor="bottom", y=1.02))
         st.plotly_chart(fig4, use_container_width=True)
 
-        st.metric(f"자동 최적 α", f"{alpha_auto:.4f}", help="모델이 자동으로 선택한 α 값")
-        st.metric(f"RMSE (자동 SES)", f"{rmse_ses_auto:.4f}")
+        st.metric("자동 최적 α", f"{alpha_auto:.4f}", help="모델이 자동으로 선택한 α 값")
+        st.metric("RMSE (자동 SES)", f"{rmse_ses_auto:.4f}")
         st.info(f"모델이 자동으로 선택한 최적 α = {alpha_auto:.4f}")
 
 # ---------- 탭 4: Holt 모델 ----------
