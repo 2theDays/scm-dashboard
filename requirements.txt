@@ -1,0 +1,7 @@
+streamlit
+yfinance==0.2.64
+statsmodels
+scikit-learn
+pandas
+numpy
+plotly
