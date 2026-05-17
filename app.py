@@ -85,8 +85,13 @@ def calculate_rmse(actual, predicted):
 # ============================================
 @st.cache_data(show_spinner=False)
 def load_data(ticker, start, end):
-    df_stock = yf.download(ticker, start=str(start), end=str(end), progress=False)
+    df_stock = yf.download(ticker, start=str(start), end=str(end), progress=False, auto_adjust=True)
     if df_stock.empty:
+        return pd.DataFrame()
+    # MultiIndex 컬럼 처리 (yfinance 버전에 따라 다름)
+    if isinstance(df_stock.columns, pd.MultiIndex):
+        df_stock.columns = df_stock.columns.droplevel(1)
+    if "Close" not in df_stock.columns:
         return pd.DataFrame()
     df = df_stock[["Close"]].copy()
     df = df.dropna()
